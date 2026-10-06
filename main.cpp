@@ -35,6 +35,9 @@ struct Human
 	Vector2 acceleration;
 	Vector2 size;
 	unsigned int color;
+	int isAlive;
+	int flameTimer = 0;
+	int currentFlame = 0;
 };
 
 struct Line
@@ -53,9 +56,7 @@ const int kPoopMax = 100;
 const int kHumanMax = 10;
 
 
-int flameTimer = 0;
-int currentFlame = 0;
-int maxFlame = 3;
+int maxFlame = 4;
 
 int poopFrame = 0;
 
@@ -77,6 +78,7 @@ void DrawSpriteSheet
 	);
 
 }
+
 
 
 // Windowsアプリでのエントリーポイント(main関数)
@@ -115,16 +117,21 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		};
 	};
 
+	//1340
+
 	Human humans[kHumanMax];
-	for (int j = 0; j< kHumanMax; j++)
+	for (int j = 0; j < kHumanMax; j++)
 	{
 		humans[j] =
-		{ 
-			{100.0f + j * 100.0f, 0.0f},
-			{0.0f, 0.0f},
+		{
+			{rand() % (1400 + 1340 + 1) + 1340.0f,0.0f},
+			{rand() % (4 + 2 + 1) + 3.0f, 0.0f},
 			{0.0f, 0.0f},
 			{64, 256},
-			GREEN
+			GREEN,
+			true,
+			0,
+			rand() % (4 + 0 + 1) + 0,
 		};
 	}
 
@@ -134,7 +141,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		{1280.0f,0.0f}
 	};
 
-	const int textureHandle = Novice::LoadTexture("./Resources/Sprite-hato.png");
+	const int bardTextureHandle = Novice::LoadTexture("./Resources/Sprite-hato.png");
+	const int humanTextureHandle = Novice::LoadTexture("./Resources/Sprite-warkHuman.png");
 
 	float bounce = -0.8f;
 
@@ -233,11 +241,33 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			poopFrame = 2;
 		}
 
-		flameTimer++;
-		if (flameTimer >= 10)
+		for (int i = 0; i < kHumanMax; i++)
 		{
-			flameTimer = 0;
-			currentFlame = (currentFlame + 1) % maxFlame;
+			humans[i].flameTimer++;
+			if (humans[i].flameTimer >= 10)
+			{
+				humans[i].flameTimer = 0;
+				humans[i].currentFlame = (humans[i].currentFlame + 1) % maxFlame;
+			}
+		}
+
+
+		for (int i = 0; i < kHumanMax; i++)
+		{
+			if (humans[i].isAlive)
+			{
+				humans[i].position.x -= humans[i].velocity.x;
+			}
+		}
+
+		for (int i = 0; i < kHumanMax; i++)
+		{
+			if (humans[i].position.x <= -100)
+			{
+				humans[i].position.x = rand() % (1400 + 1340 + 1) + 1340.0f;
+				humans[i].velocity.x = rand() % (4 + 2 + 1) + 3.0f;
+				humans[i].currentFlame = rand() % (4 + 0 + 1) + 0;
+			}
 		}
 
 		///
@@ -257,17 +287,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			WHITE
 		);
 
-		for (int j = 0; j < kHumanMax; j++)
+		for (int i = 0; i < kHumanMax; i++)
 		{
-			Novice::DrawBox
+			DrawSpriteSheet
 			(
-				(int)humans[j].position.x - (int)humans[j].size.x / 2,
-				(int)humans[j].position.y * -1 + worldpos - (int)humans[j].size.y / 2,
-				(int)humans[j].size.x,
-				(int)humans[j].size.y,
-				0.0f,
-				humans[j].color,
-				kFillModeSolid
+				humanTextureHandle,
+				humans[i].position.x - 96 / 2,
+				(humans[i].position.y + humans[i].size.y / 2) * -1 + worldpos,
+				humans[i].currentFlame,
+				0, 96, 256
 			);
 		}
 
@@ -290,7 +318,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		DrawSpriteSheet
 		(
-			textureHandle,
+			bardTextureHandle,
 			bard.position.x - bard.radius,
 			(bard.position.y + bard.radius) * -1 + worldpos,
 			poopFrame,
@@ -299,6 +327,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 
 
+
+
+		Novice::ScreenPrintf(10, 10, "humanPos.x:%d", humans[1].position.x);
 
 		///
 		/// ↑描画処理ここまで
