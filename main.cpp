@@ -1,4 +1,5 @@
 #include <Novice.h>
+#include <time.h>
 
 const char kWindowTitle[] = "LC1D_25_ホリウチ_ヨシキ_タイトル";
 
@@ -19,10 +20,20 @@ struct Bird
 
 struct Poop
 {
-	Vector2 positon;
+	Vector2 position;
 	Vector2 velocity;
 	Vector2 acceleration;
 	float radius;
+	int isShot;
+	unsigned int color;
+};
+
+struct Human
+{
+	Vector2 position;
+	Vector2 velocity;
+	Vector2 acceleration;
+	Vector2 size;
 	unsigned int color;
 };
 
@@ -33,10 +44,40 @@ struct Line
 };
 
 int isPressSpace = false;
-int isShotPoop = false;
 int canjump = true;
 
-const int worldpos = 500;
+const int worldpos = 700;
+
+const int kPoopMax = 100;
+
+const int kHumanMax = 10;
+
+
+int flameTimer = 0;
+int currentFlame = 0;
+int maxFlame = 3;
+
+int poopFrame = 0;
+
+void DrawSpriteSheet
+(const int textureHandle, float destX, float destY, int sheetX, int sheetY, int flameWidth, int flameHeight)
+{
+	int srcX = sheetX * flameWidth;
+	int srcY = sheetY * flameHeight;
+
+	Novice::DrawQuad(
+		(int)destX, (int)destY,
+		(int)destX + flameWidth, (int)destY,
+		(int)destX, (int)destY + flameHeight,
+		(int)destX + flameWidth, (int)destY + flameHeight,
+		srcX, srcY,
+		flameWidth, flameHeight,
+		textureHandle,
+		WHITE
+	);
+
+}
+
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
@@ -48,24 +89,42 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char keys[256] = { 0 };
 	char preKeys[256] = { 0 };
 
+	int currentTime = (int)time(nullptr);
+	srand(currentTime);
+
 	Bird bard
 	{
 		{600.0f, 300.0f},
 		{10.0f, 0.0f },
 		{0.0f, 0.0f },
-		50.0f,
+		64.0f,
 		WHITE
 	};
 
-	for (int i = 0; i < 3; i++)
+	Poop poops[kPoopMax];
+	for (int i = 0; i < kPoopMax; i++)
 	{
-		Bird poop
+		poops[i] =
 		{
-			{600.0f, 300.0f},
-			{10.0f, 0.0f },
-			{0.0f, 0.0f },
-			50.0f,
+			{bard.position.x, bard.position.y},
+			{10.0f, 7.0f},
+			{0.0f, 0.0f},
+			10.0f,
+			false,
 			WHITE
+		};
+	};
+
+	Human humans[kHumanMax];
+	for (int j = 0; j< kHumanMax; j++)
+	{
+		humans[j] =
+		{ 
+			{100.0f + j * 100.0f, 0.0f},
+			{0.0f, 0.0f},
+			{0.0f, 0.0f},
+			{64, 256},
+			GREEN
 		};
 	}
 
@@ -74,6 +133,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		{0.0f,0.0f},
 		{1280.0f,0.0f}
 	};
+
+	const int textureHandle = Novice::LoadTexture("./Resources/Sprite-hato.png");
 
 	float bounce = -0.8f;
 
@@ -91,22 +152,65 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 
 
-		if (keys[DIK_SPACE] != 0)
+		if (keys[DIK_SPACE] != 0 && preKeys[DIK_SPACE] == 0)
 		{
-
 			bard.velocity.y = 10.0f;
 			isPressSpace = true;
-			isShotPoop = true;
+
+			if (poopFrame == 1 || poopFrame == 2)
+			{
+				poopFrame = 0;
+			}
+			else if (poopFrame == 0)
+			{
+				poopFrame = 1;
+			}
+
+			for (int i = 0; i < kPoopMax; i++)
+			{
+				if (!poops[i].isShot)
+				{
+					poops[i].isShot = true;
+					poops[i].position = bard.position;
+					break;
+				}
+			}
 		}
 
 		if (isPressSpace)
 		{
 			bard.velocity.x += bard.acceleration.x;
 			bard.velocity.y += bounce;
-
-
 			bard.position.y += bard.velocity.y;
 			canjump = false;
+			for (size_t i = 0; i < kHumanMax; i++)
+			{
+				humans[i].velocity.x += humans[i].acceleration.x;
+				humans[i].velocity.y += bounce;
+				humans[i].position.y += humans[i].velocity.y;
+			}
+		}
+
+		for (int i = 0; i < kPoopMax; i++)
+		{
+			if (poops[i].isShot)
+			{
+				if (poops[i].velocity.x > 0)
+				{
+					poops[i].velocity.x -= 0.3f;
+				}
+				poops[i].position.x -= poops[i].velocity.x;
+				poops[i].position.y -= poops[i].velocity.y;
+			}
+		}
+
+		for (int i = 0; i < kPoopMax; i++)
+		{
+			if (poops[i].position.y <= poops[i].radius)
+			{
+				poops[i].isShot = false;
+				poops[i].velocity.x = 10.0f;
+			}
 		}
 
 		if (bard.position.y <= bard.radius)
@@ -115,24 +219,25 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			canjump = true;
 		}
 
+		for (int i = 0; i < kHumanMax; i++)
+		{
+			if (humans[i].position.y <= humans[i].size.y / 2)
+			{
+				humans[i].position.y = humans[i].size.y / 2;
+			}
+		}
+
 		if (bard.position.y - bard.radius <= 0.0f)
 		{
 			bard.velocity.y = bard.velocity.y;
+			poopFrame = 2;
 		}
 
-		if (bard.position.y + bard.radius <= -150.0f)
+		flameTimer++;
+		if (flameTimer >= 10)
 		{
-			bard.position.y = -150.0f;
-		}
-
-		if (bard.position.x - bard.radius >= 1280.0f)
-		{
-			bard.position.x = 1.0f + bard.radius;
-		}
-
-		if (bard.position.x + bard.radius <= 0.0f)
-		{
-			bard.position.x = 1280.0f + bard.radius;
+			flameTimer = 0;
+			currentFlame = (currentFlame + 1) % maxFlame;
 		}
 
 		///
@@ -143,17 +248,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		Novice::DrawEllipse
-		(
-			(int)bard.position.x,
-			(int)bard.position.y * -1 + worldpos,
-			(int)bard.radius,
-			(int)bard.radius,
-			0.0f,
-			bard.color,
-			kFillModeSolid
-		);
-
 		Novice::DrawLine
 		(
 			(int)line.start.x,
@@ -163,12 +257,48 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			WHITE
 		);
 
-		Novice::ScreenPrintf
+		for (int j = 0; j < kHumanMax; j++)
+		{
+			Novice::DrawBox
+			(
+				(int)humans[j].position.x - (int)humans[j].size.x / 2,
+				(int)humans[j].position.y * -1 + worldpos - (int)humans[j].size.y / 2,
+				(int)humans[j].size.x,
+				(int)humans[j].size.y,
+				0.0f,
+				humans[j].color,
+				kFillModeSolid
+			);
+		}
+
+		for (int i = 0; i < kPoopMax; i++)
+		{
+			if (poops[i].isShot)
+			{
+				Novice::DrawEllipse
+				(
+					(int)poops[i].position.x,
+					(int)poops[i].position.y * -1 + worldpos,
+					(int)poops[i].radius,
+					(int)poops[i].radius,
+					0.0f,
+					poops[i].color,
+					kFillModeSolid
+				);
+			}
+		}
+
+		DrawSpriteSheet
 		(
-			10, 10,
-			"bardPosX:%f   bardPosY:%f"
-			, bard.position.x, bard.position.y
+			textureHandle,
+			bard.position.x - bard.radius,
+			(bard.position.y + bard.radius) * -1 + worldpos,
+			poopFrame,
+			0, 128, 128
 		);
+
+
+
 
 		///
 		/// ↑描画処理ここまで
