@@ -11,7 +11,7 @@ struct Vector2
 
 struct Bird
 {
-	Vector2 position;
+	Vector2 leftTop;
 	Vector2 velocity;
 	Vector2 acceleration;
 	float radius;
@@ -20,24 +20,25 @@ struct Bird
 
 struct Poop
 {
-	Vector2 position;
+	Vector2 leftTop;
 	Vector2 velocity;
 	Vector2 acceleration;
-	float radius;
+	float width;
+	float height;
 	int isShot;
 	unsigned int color;
 };
 
 struct Human
 {
-	Vector2 position;
+	Vector2 leftTop;
 	Vector2 velocity;
 	Vector2 acceleration;
 	Vector2 size;
 	unsigned int color;
 	int isAlive;
-	int flameTimer = 0;
-	int currentFlame = 0;
+	int flameTimer;
+	int currentFlame;
 };
 
 struct Line
@@ -59,6 +60,8 @@ const int kHumanMax = 10;
 int maxFlame = 4;
 
 int poopFrame = 0;
+
+int score = 0;
 
 void DrawSpriteSheet
 (const int textureHandle, float destX, float destY, int sheetX, int sheetY, int flameWidth, int flameHeight)
@@ -108,16 +111,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	{
 		poops[i] =
 		{
-			{bard.position.x, bard.position.y},
+			{bard.leftTop.x, bard.leftTop.y},
 			{10.0f, 7.0f},
 			{0.0f, 0.0f},
-			10.0f,
+			20.0f,
+			20.0f,
 			false,
 			WHITE
 		};
 	};
-
-	//1340
 
 	Human humans[kHumanMax];
 	for (int j = 0; j < kHumanMax; j++)
@@ -143,6 +145,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	const int bardTextureHandle = Novice::LoadTexture("./Resources/Sprite-hato.png");
 	const int humanTextureHandle = Novice::LoadTexture("./Resources/Sprite-warkHuman.png");
+	const int backGrawndTextureHandle = Novice::LoadTexture("./Resources/Sprite-backgrowndTD1.png");
+	const int poopTextureHandle = Novice::LoadTexture("./Resources/poop.png");
 
 	float bounce = -0.8f;
 
@@ -179,7 +183,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 				if (!poops[i].isShot)
 				{
 					poops[i].isShot = true;
-					poops[i].position = bard.position;
+					poops[i].leftTop = bard.leftTop;
 					break;
 				}
 			}
@@ -189,13 +193,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		{
 			bard.velocity.x += bard.acceleration.x;
 			bard.velocity.y += bounce;
-			bard.position.y += bard.velocity.y;
+			bard.leftTop.y += bard.velocity.y;
 			canjump = false;
 			for (size_t i = 0; i < kHumanMax; i++)
 			{
 				humans[i].velocity.x += humans[i].acceleration.x;
 				humans[i].velocity.y += bounce;
-				humans[i].position.y += humans[i].velocity.y;
+				humans[i].leftTop.y += humans[i].velocity.y;
 			}
 		}
 
@@ -207,35 +211,35 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 				{
 					poops[i].velocity.x -= 0.3f;
 				}
-				poops[i].position.x -= poops[i].velocity.x;
-				poops[i].position.y -= poops[i].velocity.y;
+				poops[i].leftTop.x -= poops[i].velocity.x;
+				poops[i].leftTop.y -= poops[i].velocity.y;
 			}
 		}
 
 		for (int i = 0; i < kPoopMax; i++)
 		{
-			if (poops[i].position.y <= poops[i].radius)
+			if (poops[i].leftTop.y <= poops[i].width)
 			{
 				poops[i].isShot = false;
 				poops[i].velocity.x = 10.0f;
 			}
 		}
 
-		if (bard.position.y <= bard.radius)
+		if (bard.leftTop.y <= bard.radius)
 		{
-			bard.position.y = bard.radius;
+			bard.leftTop.y = bard.radius;
 			canjump = true;
 		}
 
 		for (int i = 0; i < kHumanMax; i++)
 		{
-			if (humans[i].position.y <= humans[i].size.y / 2)
+			if (humans[i].leftTop.y <= humans[i].size.y / 2)
 			{
-				humans[i].position.y = humans[i].size.y / 2;
+				humans[i].leftTop.y = humans[i].size.y / 2;
 			}
 		}
 
-		if (bard.position.y - bard.radius <= 0.0f)
+		if (bard.leftTop.y - bard.radius <= 0.0f)
 		{
 			bard.velocity.y = bard.velocity.y;
 			poopFrame = 2;
@@ -256,15 +260,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		{
 			if (humans[i].isAlive)
 			{
-				humans[i].position.x -= humans[i].velocity.x;
+				humans[i].leftTop.x -= humans[i].velocity.x;
 			}
 		}
 
 		for (int i = 0; i < kHumanMax; i++)
 		{
-			if (humans[i].position.x <= -100)
+			if (humans[i].leftTop.x <= -100)
 			{
-				humans[i].position.x = rand() % (1400 + 1340 + 1) + 1340.0f;
+				humans[i].leftTop.x = rand() % (1400 + 1340 + 1) + 1340.0f;
 				humans[i].velocity.x = rand() % (4 + 2 + 1) + 3.0f;
 				humans[i].currentFlame = rand() % (4 + 0 + 1) + 0;
 			}
@@ -287,40 +291,75 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			WHITE
 		);
 
+
+
+		Novice::DrawSprite
+		(
+			0,
+			0,
+			backGrawndTextureHandle,
+			1,
+			1,
+			0.0f,
+			WHITE
+		);
+
 		for (int i = 0; i < kHumanMax; i++)
 		{
+			Novice::DrawBox
+			(
+				(int)humans[i].leftTop.x,
+				(int)humans[i].leftTop.y * -1 + worldpos,
+				(int)humans[i].size.x,
+				(int)humans[i].size.y,
+				0.0f,
+				WHITE,
+				kFillModeSolid
+				);
 			DrawSpriteSheet
 			(
 				humanTextureHandle,
-				humans[i].position.x - 96 / 2,
-				(humans[i].position.y + humans[i].size.y / 2) * -1 + worldpos,
+				humans[i].leftTop.x - humans[i].size.x / 2,
+				(humans[i].leftTop.y + humans[i].size.y / 2) * -1 + worldpos,
 				humans[i].currentFlame,
 				0, 96, 256
 			);
+
 		}
 
 		for (int i = 0; i < kPoopMax; i++)
 		{
 			if (poops[i].isShot)
 			{
-				Novice::DrawEllipse
+				Novice::DrawBox
 				(
-					(int)poops[i].position.x,
-					(int)poops[i].position.y * -1 + worldpos,
-					(int)poops[i].radius,
-					(int)poops[i].radius,
+					(int)poops[i].leftTop.x,
+					(int)poops[i].leftTop.y * -1 + worldpos,
+					(int)poops[i].width,
+					(int)poops[i].height,
 					0.0f,
-					poops[i].color,
+					WHITE,
 					kFillModeSolid
 				);
+				Novice::DrawSprite
+				(
+					(int)poops[i].leftTop.x,
+					(int)(poops[i].leftTop.y ) * -1 + worldpos,
+					poopTextureHandle,
+					1,
+					1,
+					0.0f,
+					WHITE
+				);
+
 			}
 		}
 
 		DrawSpriteSheet
 		(
 			bardTextureHandle,
-			bard.position.x - bard.radius,
-			(bard.position.y + bard.radius) * -1 + worldpos,
+			bard.leftTop.x - bard.radius,
+			(bard.leftTop.y + bard.radius) * -1 + worldpos,
 			poopFrame,
 			0, 128, 128
 		);
@@ -328,8 +367,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 
 
-
-		Novice::ScreenPrintf(10, 10, "humanPos.x:%d", humans[1].position.x);
 
 		///
 		/// ↑描画処理ここまで
