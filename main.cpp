@@ -3,14 +3,12 @@
 
 const char kWindowTitle[] = "LC1D_25_ホリウチ_ヨシキ_タイトル";
 
-struct Vector2
-{
+struct Vector2 {
 	float x;
 	float y;
 };
 
-struct Bird
-{
+struct Bird {
 	Vector2 leftTop;
 	Vector2 velocity;
 	Vector2 acceleration;
@@ -18,19 +16,18 @@ struct Bird
 	unsigned int color;
 };
 
-struct Poop
-{
+struct Poop {
 	Vector2 leftTop;
 	Vector2 velocity;
 	Vector2 acceleration;
 	float width;
 	float height;
 	int isShot;
+	int shotpoopHeight;
 	unsigned int color;
 };
 
-struct Human
-{
+struct Human {
 	Vector2 leftTop;
 	Vector2 velocity;
 	Vector2 acceleration;
@@ -39,12 +36,21 @@ struct Human
 	int isAlive;
 	int flameTimer;
 	int currentFlame;
+	int hitCurrentFlame;
 };
 
-struct Line
-{
+struct Line {
 	Vector2 start;
 	Vector2 end;
+};
+
+struct RadioControl
+{
+	Vector2 leftTop;
+	Vector2 velocity;
+	unsigned int color;
+	int respawnTimer;
+	int isAlive;
 };
 
 int isPressSpace = false;
@@ -54,35 +60,23 @@ const int worldpos = 700;
 
 const int kPoopMax = 100;
 
-const int kHumanMax = 10;
-
+const int kHumanMax = 8;
 
 int maxFlame = 4;
+int hitmaxFlame = 4;
 
 int poopFrame = 0;
 
 int score = 0;
 
-void DrawSpriteSheet
-(const int textureHandle, float destX, float destY, int sheetX, int sheetY, int flameWidth, int flameHeight)
-{
+void DrawSpriteSheet(const int textureHandle, float destX, float destY, int sheetX, int sheetY, int flameWidth, int flameHeight) {
 	int srcX = sheetX * flameWidth;
 	int srcY = sheetY * flameHeight;
 
 	Novice::DrawQuad(
-		(int)destX, (int)destY,
-		(int)destX + flameWidth, (int)destY,
-		(int)destX, (int)destY + flameHeight,
-		(int)destX + flameWidth, (int)destY + flameHeight,
-		srcX, srcY,
-		flameWidth, flameHeight,
-		textureHandle,
-		WHITE
-	);
-
+		(int)destX, (int)destY, (int)destX + flameWidth, (int)destY, (int)destX, (int)destY + flameHeight, (int)destX + flameWidth, (int)destY + flameHeight, srcX, srcY, flameWidth, flameHeight,
+		textureHandle, WHITE);
 }
-
-
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
@@ -97,56 +91,56 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	int currentTime = (int)time(nullptr);
 	srand(currentTime);
 
-	Bird bard
-	{
+	Bird bard{
 		{600.0f, 300.0f},
-		{10.0f, 0.0f },
-		{0.0f, 0.0f },
-		64.0f,
-		WHITE
+		{10.0f,  0.0f  },
+		{0.0f,   0.0f  },
+		64.0f, WHITE
 	};
 
 	Poop poops[kPoopMax];
-	for (int i = 0; i < kPoopMax; i++)
-	{
-		poops[i] =
-		{
+	for (int i = 0; i < kPoopMax; i++) {
+		poops[i] = {
 			{bard.leftTop.x, bard.leftTop.y},
-			{10.0f, 7.0f},
-			{0.0f, 0.0f},
-			20.0f,
-			20.0f,
-			false,
-			WHITE
+			{10.0f,7.0f},
+			{0.0f,0.0f},
+			16.0f, 16.0f, false,0, WHITE
 		};
 	};
 
 	Human humans[kHumanMax];
 	for (int j = 0; j < kHumanMax; j++)
 	{
-		humans[j] =
-		{
-			{rand() % (1400 + 1340 + 1) + 1340.0f,0.0f},
-			{rand() % (4 + 2 + 1) + 3.0f, 0.0f},
-			{0.0f, 0.0f},
-			{64, 256},
-			GREEN,
-			true,
-			0,
+		humans[j] = {
+			{rand() % (1400 + 1340 + 1) + 1340.0f, 0.0f},
+			{rand() % (4 + 2 + 1) + 3.0f,0.0f},
+			{0.0f,0.0f},
+			{64,256 },
+			GREEN, true, 0,
 			rand() % (4 + 0 + 1) + 0,
+			5
 		};
 	}
 
 	Line line
 	{
-		{0.0f,0.0f},
-		{1280.0f,0.0f}
+		{0.0f,    0.0f},
+		{1280.0f, 0.0f}
+	};
+
+	RadioControl radioControl
+	{
+		{1300,(float)(rand() % (400 + 0 + 1) + 0)},
+		{15,0},
+		WHITE,
+		rand() % (120 + 240 + 1) + 120,
+		false,
 	};
 
 	const int bardTextureHandle = Novice::LoadTexture("./Resources/Sprite-hato.png");
 	const int humanTextureHandle = Novice::LoadTexture("./Resources/Sprite-warkHuman.png");
 	const int backGrawndTextureHandle = Novice::LoadTexture("./Resources/Sprite-backgrowndTD1.png");
-	const int poopTextureHandle = Novice::LoadTexture("./Resources/poop.png");
+	const int poopTextureHandle = Novice::LoadTexture("./Resources/poop-export.png");
 
 	float bounce = -0.8f;
 
@@ -162,7 +156,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 		/// ↓更新処理ここから
 		///
-
 
 		if (keys[DIK_SPACE] != 0 && preKeys[DIK_SPACE] == 0)
 		{
@@ -180,8 +173,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 			for (int i = 0; i < kPoopMax; i++)
 			{
-				if (!poops[i].isShot)
-				{
+				if (!poops[i].isShot) {
 					poops[i].isShot = true;
 					poops[i].leftTop = bard.leftTop;
 					break;
@@ -207,6 +199,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		{
 			if (poops[i].isShot)
 			{
+				poops[i].shotpoopHeight = (int)bard.leftTop.y;
 				if (poops[i].velocity.x > 0)
 				{
 					poops[i].velocity.x -= 0.3f;
@@ -251,17 +244,50 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			if (humans[i].flameTimer >= 10)
 			{
 				humans[i].flameTimer = 0;
-				humans[i].currentFlame = (humans[i].currentFlame + 1) % maxFlame;
+
+				if (humans[i].isAlive)
+				{
+					humans[i].currentFlame = (humans[i].currentFlame + 1) % maxFlame;
+				}
+				else
+				{
+					humans[i].hitCurrentFlame++;
+
+					if (humans[i].hitCurrentFlame > 7)
+					{
+						humans[i].hitCurrentFlame = 4;
+					}
+				}
 			}
 		}
 
-
 		for (int i = 0; i < kHumanMax; i++)
 		{
-			if (humans[i].isAlive)
-			{
-				humans[i].leftTop.x -= humans[i].velocity.x;
-			}
+			humans[i].leftTop.x -= humans[i].velocity.x;
+		}
+
+		if (!radioControl.isAlive)
+		{
+			radioControl.respawnTimer--;
+		}
+		else if (radioControl.isAlive)
+		{
+			radioControl.leftTop.x -= radioControl.velocity.x;
+		}
+
+
+
+		if (radioControl.respawnTimer <= 0)
+		{
+			radioControl.isAlive = true;
+		}
+
+		if (radioControl.leftTop.x <= -100)
+		{
+			radioControl.leftTop.x = 1300;
+			radioControl.leftTop.y = (float)(rand() % (400 + 0 + 1) + 0);
+			radioControl.respawnTimer = rand() % (120 + 240 + 1) + 120;
+			radioControl.isAlive = false;
 		}
 
 		for (int i = 0; i < kHumanMax; i++)
@@ -271,6 +297,58 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 				humans[i].leftTop.x = rand() % (1400 + 1340 + 1) + 1340.0f;
 				humans[i].velocity.x = rand() % (4 + 2 + 1) + 3.0f;
 				humans[i].currentFlame = rand() % (4 + 0 + 1) + 0;
+				humans[i].hitCurrentFlame = 4;
+				humans[i].flameTimer = 0;
+				humans[i].isAlive = true;
+			}
+		}
+
+		if (bard.leftTop.y >= 700)
+		{
+			bard.leftTop.y = 700;
+		}
+
+		//==================================================
+		// PoopとHumanの当たり判定
+		//==================================================
+		for (int i = 0; i < kPoopMax; i++) {
+
+			if (!poops[i].isShot) {
+				continue;
+			}
+
+			for (int j = 0; j < kHumanMax; j++) {
+
+
+				float humanLeft = (float)((int)humans[j].leftTop.x + 16 - (int)humans[j].size.x / 2);
+				float humanTop = (float)((int)(humans[j].leftTop.y + (int)humans[j].size.y / 2) * -1 + worldpos);
+				float humanRight = humanLeft + humans[j].size.x;
+				float humanBottom = humanTop + humans[j].size.y - 184;
+
+				float poopLeft = (float)((int)poops[i].leftTop.x);
+				float poopTop = (float)((int)poops[i].leftTop.y * -1 + worldpos);
+				float poopRight = poopLeft + poops[i].width;
+				float poopBottom = poopTop + poops[i].height;
+
+				bool hitX = poopRight > humanLeft && poopLeft < humanRight;
+				bool hitY = poopBottom > humanTop && poopTop < humanBottom;
+
+
+				if (hitX && hitY)
+				{
+					if (humans[j].isAlive)
+					{
+						score += 10 * (poops[i].shotpoopHeight - 184) / 100;
+						poops[i].isShot = false;
+						poops[i].velocity.x = 10.0f;
+						humans[j].isAlive = false;
+						humans[j].velocity.x = 25.0f;
+						humans[j].hitCurrentFlame = 4;
+						humans[j].flameTimer = 0;
+						break;
+
+					}
+				}
 			}
 		}
 
@@ -282,91 +360,67 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		Novice::DrawLine
-		(
-			(int)line.start.x,
-			(int)line.start.y * -1 + worldpos,
-			(int)line.end.x,
-			(int)line.end.y * -1 + worldpos,
-			WHITE
-		);
+		Novice::DrawLine((int)line.start.x, (int)line.start.y * -1 + worldpos, (int)line.end.x, (int)line.end.y * -1 + worldpos, WHITE);
 
-
-
-		Novice::DrawSprite
-		(
-			0,
-			0,
-			backGrawndTextureHandle,
-			1,
-			1,
-			0.0f,
-			WHITE
-		);
+		Novice::DrawSprite(0, 0, backGrawndTextureHandle, 1, 1, 0.0f, WHITE);
 
 		for (int i = 0; i < kHumanMax; i++)
 		{
 			Novice::DrawBox
 			(
-				(int)humans[i].leftTop.x,
-				(int)humans[i].leftTop.y * -1 + worldpos,
+				(int)humans[i].leftTop.x + 16 - (int)humans[i].size.x / 2,
+				((int)humans[i].leftTop.y + (int)humans[i].size.y / 2) * -1 + worldpos,
 				(int)humans[i].size.x,
-				(int)humans[i].size.y,
-				0.0f,
-				WHITE,
-				kFillModeSolid
-				);
-			DrawSpriteSheet
-			(
-				humanTextureHandle,
-				humans[i].leftTop.x - humans[i].size.x / 2,
-				(humans[i].leftTop.y + humans[i].size.y / 2) * -1 + worldpos,
-				humans[i].currentFlame,
-				0, 96, 256
+				(int)humans[i].size.y - 184,
+				0.0f, WHITE, kFillModeSolid
 			);
-
-		}
-
-		for (int i = 0; i < kPoopMax; i++)
-		{
-			if (poops[i].isShot)
+			if (humans[i].isAlive)
 			{
-				Novice::DrawBox
-				(
-					(int)poops[i].leftTop.x,
-					(int)poops[i].leftTop.y * -1 + worldpos,
-					(int)poops[i].width,
-					(int)poops[i].height,
-					0.0f,
-					WHITE,
-					kFillModeSolid
-				);
-				Novice::DrawSprite
-				(
-					(int)poops[i].leftTop.x,
-					(int)(poops[i].leftTop.y ) * -1 + worldpos,
-					poopTextureHandle,
-					1,
-					1,
-					0.0f,
-					WHITE
-				);
-
+				DrawSpriteSheet(humanTextureHandle, humans[i].leftTop.x - humans[i].size.x / 2, (humans[i].leftTop.y + humans[i].size.y / 2) * -1 + worldpos, humans[i].currentFlame, 0, 96, 256);
+			}
+			else
+			{
+				DrawSpriteSheet(humanTextureHandle, humans[i].leftTop.x - humans[i].size.x / 2, (humans[i].leftTop.y + humans[i].size.y / 2) * -1 + worldpos, humans[i].hitCurrentFlame, 0, 96, 256);
 			}
 		}
 
-		DrawSpriteSheet
-		(
-			bardTextureHandle,
-			bard.leftTop.x - bard.radius,
-			(bard.leftTop.y + bard.radius) * -1 + worldpos,
-			poopFrame,
-			0, 128, 128
-		);
+		for (int i = 0; i < kPoopMax; i++) {
+			if (poops[i].isShot) {
+				Novice::DrawSprite((int)poops[i].leftTop.x, (int)(poops[i].leftTop.y) * -1 + worldpos, poopTextureHandle, 1, 1, 0.0f, WHITE);
+			}
+		}
 
+		DrawSpriteSheet(bardTextureHandle, bard.leftTop.x - bard.radius, (bard.leftTop.y + bard.radius) * -1 + worldpos, poopFrame, 0, 128, 128);
 
+		if (radioControl.respawnTimer <= 60 && radioControl.respawnTimer >= 1)
+		{
+			Novice::DrawBox
+			(
+				1206,
+				(int)radioControl.leftTop.y,
+				32,
+				32,
+				0.0f,
+				RED,
+				kFillModeSolid
+			);
+		}
 
-
+		if (radioControl.isAlive)
+		{
+			Novice::DrawBox
+			(
+				(int)radioControl.leftTop.x,
+				(int)radioControl.leftTop.y,
+				64,
+				32,
+				0.0f,
+				radioControl.color,
+				kFillModeSolid
+			);
+		}
+			
+		Novice::ScreenPrintf(20, 0, "SCORE: %d", score);
 
 		///
 		/// ↑描画処理ここまで
