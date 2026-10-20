@@ -51,6 +51,8 @@ struct RadioControl
 	unsigned int color;
 	int respawnTimer;
 	int isAlive;
+	int flameTimer;
+	int currentFlame;
 };
 
 int isPressSpace = false;
@@ -63,7 +65,6 @@ const int kPoopMax = 100;
 const int kHumanMax = 8;
 
 int maxFlame = 4;
-int hitmaxFlame = 4;
 
 int poopFrame = 0;
 
@@ -77,6 +78,8 @@ void DrawSpriteSheet(const int textureHandle, float destX, float destY, int shee
 		(int)destX, (int)destY, (int)destX + flameWidth, (int)destY, (int)destX, (int)destY + flameHeight, (int)destX + flameWidth, (int)destY + flameHeight, srcX, srcY, flameWidth, flameHeight,
 		textureHandle, WHITE);
 }
+
+
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
@@ -131,7 +134,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	RadioControl radioControl
 	{
 		{1300,(float)(rand() % (400 + 0 + 1) + 0)},
-		{15,0},
+		{10,0},
 		WHITE,
 		rand() % (120 + 240 + 1) + 120,
 		false,
@@ -141,6 +144,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	const int humanTextureHandle = Novice::LoadTexture("./Resources/Sprite-warkHuman.png");
 	const int backGrawndTextureHandle = Novice::LoadTexture("./Resources/Sprite-backgrowndTD1.png");
 	const int poopTextureHandle = Novice::LoadTexture("./Resources/poop-export.png");
+	const int warnTextureHandle = Novice::LoadTexture("./Resources/Sprite-warn.png");
+	const int praneTextureHandle = Novice::LoadTexture("./Resources/Sprite-plane.png");
 
 	float bounce = -0.8f;
 
@@ -261,6 +266,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			}
 		}
 
+		radioControl.flameTimer++;
+		if (radioControl.flameTimer >= 2)
+		{
+			radioControl.flameTimer = 0;
+			if (radioControl.isAlive)
+			{
+				radioControl.currentFlame = (radioControl.currentFlame + 1) % maxFlame;
+			}
+		}
+
 		for (int i = 0; i < kHumanMax; i++)
 		{
 			humans[i].leftTop.x -= humans[i].velocity.x;
@@ -319,17 +334,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 			for (int j = 0; j < kHumanMax; j++) {
 
-
-				float humanLeft = (float)((int)humans[j].leftTop.x + 16 - (int)humans[j].size.x / 2);
-				float humanTop = (float)((int)(humans[j].leftTop.y + (int)humans[j].size.y / 2) * -1 + worldpos);
+				float humanLeft = (humans[j].leftTop.x + 16 - humans[j].size.x / 2);
+				float humanTop = (humans[j].leftTop.y + humans[j].size.y / 2) * -1 + worldpos;
 				float humanRight = humanLeft + humans[j].size.x;
 				float humanBottom = humanTop + humans[j].size.y - 184;
-
-				float poopLeft = (float)((int)poops[i].leftTop.x);
-				float poopTop = (float)((int)poops[i].leftTop.y * -1 + worldpos);
+				
+				float poopLeft = poops[i].leftTop.x;
+				float poopTop = poops[i].leftTop.y * -1 + worldpos;
 				float poopRight = poopLeft + poops[i].width;
 				float poopBottom = poopTop + poops[i].height;
-
+				
+				
 				bool hitX = poopRight > humanLeft && poopLeft < humanRight;
 				bool hitY = poopBottom > humanTop && poopTop < humanBottom;
 
@@ -346,7 +361,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 						humans[j].hitCurrentFlame = 4;
 						humans[j].flameTimer = 0;
 						break;
-
+				
 					}
 				}
 			}
@@ -360,20 +375,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		Novice::DrawLine((int)line.start.x, (int)line.start.y * -1 + worldpos, (int)line.end.x, (int)line.end.y * -1 + worldpos, WHITE);
-
 		Novice::DrawSprite(0, 0, backGrawndTextureHandle, 1, 1, 0.0f, WHITE);
 
 		for (int i = 0; i < kHumanMax; i++)
 		{
-			Novice::DrawBox
-			(
-				(int)humans[i].leftTop.x + 16 - (int)humans[i].size.x / 2,
-				((int)humans[i].leftTop.y + (int)humans[i].size.y / 2) * -1 + worldpos,
-				(int)humans[i].size.x,
-				(int)humans[i].size.y - 184,
-				0.0f, WHITE, kFillModeSolid
-			);
+
 			if (humans[i].isAlive)
 			{
 				DrawSpriteSheet(humanTextureHandle, humans[i].leftTop.x - humans[i].size.x / 2, (humans[i].leftTop.y + humans[i].size.y / 2) * -1 + worldpos, humans[i].currentFlame, 0, 96, 256);
@@ -394,32 +400,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		if (radioControl.respawnTimer <= 60 && radioControl.respawnTimer >= 1)
 		{
-			Novice::DrawBox
-			(
-				1206,
-				(int)radioControl.leftTop.y,
-				32,
-				32,
-				0.0f,
-				RED,
-				kFillModeSolid
-			);
+
+
+			DrawSpriteSheet(warnTextureHandle, 1206, (float)radioControl.leftTop.y, 1, 1, 64, 64);
 		}
 
 		if (radioControl.isAlive)
 		{
-			Novice::DrawBox
-			(
-				(int)radioControl.leftTop.x,
-				(int)radioControl.leftTop.y,
-				64,
-				32,
-				0.0f,
-				radioControl.color,
-				kFillModeSolid
-			);
+
+			DrawSpriteSheet(praneTextureHandle, (float)radioControl.leftTop.x, (float)radioControl.leftTop.y, radioControl.currentFlame, 1, 128, 64);
+
 		}
-			
+
 		Novice::ScreenPrintf(20, 0, "SCORE: %d", score);
 
 		///
